@@ -66,7 +66,14 @@ class CodeEditor(QsciScintilla):
         self.setBraceMatching(QsciScintilla.BraceMatch.SloppyBraceMatch)
         self.setUtf8(True)
         self.setEolMode(QsciScintilla.EolMode.EolUnix)
-        self.setWrapMode(QsciScintilla.WrapMode.WrapNone)
+
+        wrap = SettingsManager.get("word_wrap")
+        self.setWrapMode(
+            QsciScintilla.WrapMode.WrapWord if wrap
+            else QsciScintilla.WrapMode.WrapNone
+        )
+        if SettingsManager.get("show_whitespace"):
+            self.setWhitespaceVisibility(QsciScintilla.WhitespaceVisibility.WsVisible)
 
     def _apply_line_spacing(self):
         px = SettingsManager.get("line_spacing")
