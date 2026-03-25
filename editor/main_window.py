@@ -33,7 +33,8 @@ class MainWindow(QMainWindow):
 
         self.setAcceptDrops(True)
 
-        self.tab_manager.add_new_tab()
+        if not self.tab_manager.restore_session():
+            self.tab_manager.add_new_tab()
 
         saved_theme = SettingsManager.get("theme") or "light"
         self._set_theme(saved_theme)
@@ -374,7 +375,5 @@ class MainWindow(QMainWindow):
                 self.tab_manager.open_file(path)
 
     def closeEvent(self, event):
-        if self.tab_manager.close_all_tabs():
-            event.accept()
-        else:
-            event.ignore()
+        self.tab_manager.save_session()
+        event.accept()

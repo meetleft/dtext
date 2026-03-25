@@ -1,10 +1,15 @@
 import os
+import json
+from pathlib import Path
 from PyQt6.QtWidgets import QTabWidget, QFileDialog, QMessageBox, QMenu
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QAction
 
 from editor.code_editor import CodeEditor
 from editor.syntax_manager import SyntaxManager
+
+SESSION_DIR = Path.home() / ".TextEditMac"
+SESSION_FILE = SESSION_DIR / "session.json"
 
 
 class TabManager(QTabWidget):
@@ -205,3 +210,74 @@ class TabManager(QTabWidget):
         if editor:
             self.syntax_manager.apply_lexer_by_name(editor, language)
             self.editor_status_changed.emit(editor)
+
+    # ---- Session persistence ----
+
+    def save_session(self):
+        tabs = []
+        for i in range(self.count()):
+            w = self.widget(i)
+            if not isinstance(w, CodeEditor):
+                continue
+            line, col = w.getCursorPosition()
+            tabs.append({
+                "file_path": w.file_path,
+                "title": self.tabText(i).rstrip("*").strip(),
+                "content": w.text(),
+                "language": w.language_name or "Plain Text",
+                "encoding": w.file_encoding or "UTF-8",
+                "cursor_line": line,
+                "cursor_col": col,
+            })
+        data = {"active_index": self.currentIndex(), "tabs": tabs}
+        try:
+            SESSION_DIR.mkdir(parents=True, exist_ok=True)
+            SESSION_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
+
+    def restore_session(self) -> bool:
+        if not SESSION_FILE.exists():
+            return False
+        try:
+            data = json.loads(SESSION_FILE.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+
+        tabs = data.get("tabs", [])
+        if not tabs:
+            return False
+
+        for info in tabs:
+            editor = self._create_editor()
+            fp = info.get("file_path")
+            content = info.get("content", "")
+            title = info.get("title", "未命名")
+            lang = info.get("language", "Plain Text")
+            enc = info.get("encoding", "UTF-8")
+            cur_line = info.get("cursor_line", 0)
+            cur_col = info.get("cursor_col", 0)
+
+            if fp and os.path.isfile(fp):
+                editor.load_file(fp)
+                self.syntax_manager.apply_lexer(editor, fp)
+                title = os.path.basename(fp)
+            else:
+                editor.setText(content)
+                editor.file_path = fp
+                editor.file_encoding = enc
+                editor.setModified(False)
+                editor._modified_since_save = False
+                if lang != "Plain Text":
+                    self.syntax_manager.apply_lexer_by_name(editor, lang)
+
+            editor.language_name = lang
+            editor.file_encoding = enc
+            idx = self.addTab(editor, title)
+            editor.setCursorPosition(cur_line, cur_col)
+
+        active = data.get("active_index", 0)
+        if 0 <= active < self.count():
+            self.setCurrentIndex(active)
+
+        return True
