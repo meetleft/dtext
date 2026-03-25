@@ -141,14 +141,18 @@ QTabBar::tab:selected {
 QTabBar::tab:!selected {
     margin-top: 4px;
 }
-QTabBar::close-button {
-    subcontrol-position: right;
-    padding: 3px;
-    margin-right: 2px;
+QToolButton#tabCloseBtn {
+    background: transparent;
+    color: #999999;
+    border: none;
     border-radius: 4px;
+    font-size: 12px;
+    padding: 0;
+    margin: 0 2px;
 }
-QTabBar::close-button:hover {
+QToolButton#tabCloseBtn:hover {
     background-color: rgba(0, 0, 0, 0.1);
+    color: #333333;
 }
 
 /* ===== Status bar ===== */
@@ -409,14 +413,18 @@ QTabBar::tab:selected {
 QTabBar::tab:!selected {
     margin-top: 4px;
 }
-QTabBar::close-button {
-    subcontrol-position: right;
-    padding: 3px;
-    margin-right: 2px;
+QToolButton#tabCloseBtn {
+    background: transparent;
+    color: #666666;
+    border: none;
     border-radius: 4px;
+    font-size: 12px;
+    padding: 0;
+    margin: 0 2px;
 }
-QTabBar::close-button:hover {
+QToolButton#tabCloseBtn:hover {
     background-color: rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
 }
 
 /* ===== Status bar ===== */

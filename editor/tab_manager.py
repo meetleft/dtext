@@ -1,8 +1,11 @@
 import os
 import json
 from pathlib import Path
-from PyQt6.QtWidgets import QTabWidget, QFileDialog, QMessageBox, QMenu
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtWidgets import (
+    QTabWidget, QFileDialog, QMessageBox, QMenu,
+    QToolButton, QTabBar,
+)
+from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QAction
 
 from editor.code_editor import CodeEditor
@@ -10,6 +13,29 @@ from editor.syntax_manager import SyntaxManager
 
 SESSION_DIR = Path.home() / ".TextEditMac"
 SESSION_FILE = SESSION_DIR / "session.json"
+
+
+class _CloseButton(QToolButton):
+    """Small visible close button for tab bar."""
+
+    def __init__(self, tab_bar: QTabBar, parent=None):
+        super().__init__(parent)
+        self._tab_bar = tab_bar
+        self.setText("✕")
+        self.setObjectName("tabCloseBtn")
+        self.setFixedSize(QSize(20, 20))
+        self.setAutoRaise(True)
+        self.clicked.connect(self._on_click)
+
+    def _on_click(self):
+        for i in range(self._tab_bar.count()):
+            left = self._tab_bar.tabButton(i, QTabBar.ButtonPosition.LeftSide)
+            right = self._tab_bar.tabButton(i, QTabBar.ButtonPosition.RightSide)
+            if left is self or right is self:
+                tw = self._tab_bar.parent()
+                if isinstance(tw, TabManager):
+                    tw.close_tab(i)
+                return
 
 
 class TabManager(QTabWidget):
@@ -22,15 +48,24 @@ class TabManager(QTabWidget):
         self.main_window = main_window
         self.syntax_manager = SyntaxManager()
 
-        self.setTabsClosable(True)
+        self.setTabsClosable(False)
         self.setMovable(True)
         self.setDocumentMode(True)
-
-        self.tabCloseRequested.connect(self.close_tab)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._tab_context_menu)
 
         self._populate_language_menu()
+
+    # ---- Close button ----
+
+    def _install_close_button(self, index: int):
+        bar = self.tabBar()
+        btn = _CloseButton(bar)
+        bar.setTabButton(index, QTabBar.ButtonPosition.RightSide, btn)
+
+    def tabInserted(self, index: int):
+        super().tabInserted(index)
+        self._install_close_button(index)
 
     # ---- Tab operations ----
 
@@ -273,7 +308,7 @@ class TabManager(QTabWidget):
 
             editor.language_name = lang
             editor.file_encoding = enc
-            idx = self.addTab(editor, title)
+            self.addTab(editor, title)
             editor.setCursorPosition(cur_line, cur_col)
 
         active = data.get("active_index", 0)
